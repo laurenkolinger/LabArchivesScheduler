@@ -36,8 +36,20 @@
     <!-- ======== Alert (hidden by default) ======== -->
     <div id="alertBox" class="alert hidden"></div>
 
-    <!-- ======== Reservation Form ======== -->
-    <div class="card">
+    <!-- ======== Login Gate (shown when not logged in) ======== -->
+    <div id="loginGate" class="password-gate">
+      <div class="password-box card">
+        <h2>Login Required</h2>
+        <p>You must be logged in to make a reservation.</p>
+        <button class="btn btn-primary" id="loginGateBtn">Log In</button>
+        <p class="mt-16" style="font-size:11px;color:var(--storm);">
+          Example user: <code>mulder@marinelab.edu</code>
+        </p>
+      </div>
+    </div>
+
+    <!-- ======== Reservation Form (hidden until logged in) ======== -->
+    <div class="card hidden" id="reservationCard">
       <h3>Reservation Details</h3>
       <form id="reservationForm" novalidate>
 
@@ -104,7 +116,7 @@
     </div>
 
     <!-- ======== Quick Preview: Existing reservations for selected equipment ======== -->
-    <div class="card" id="previewCard" style="display:none;">
+    <div class="card hidden" id="previewCard" style="display:none;">
       <h3 id="previewTitle">Upcoming Reservations</h3>
       <table class="data-table">
         <thead>
@@ -137,6 +149,24 @@
   <script src="app.js"></script>
   <script>
     function init() {
+      renderAuthUI();
+
+      if (isLoggedIn()) {
+        showReservationForm();
+      } else {
+        document.getElementById("loginGateBtn").addEventListener("click", () => {
+          showLoginModal({
+            requiredRole: "user",
+            message: "Log in with your lab email to make a reservation.",
+            onSuccess: () => showReservationForm(),
+          });
+        });
+      }
+    }
+
+    function showReservationForm() {
+      document.getElementById("loginGate").classList.add("hidden");
+      document.getElementById("reservationCard").classList.remove("hidden");
       populateEquipmentDropdown();
       populatePIDropdown();
       setDefaultDates();
@@ -178,6 +208,15 @@
       document.getElementById("endDate").value = todayStr;
       document.getElementById("startDate").min = todayStr;
       document.getElementById("endDate").min = todayStr;
+
+      // Pre-fill the name with the logged-in user's email
+      const user = getCurrentUser();
+      if (user) {
+        const nameField = document.getElementById("reservedBy");
+        if (!nameField.value) {
+          nameField.placeholder = `Logged in as ${user.email}`;
+        }
+      }
     }
 
     // ---- Sync end date when start date changes ----

@@ -6,13 +6,22 @@ A browser-based equipment reservation system for a university marine science lab
 
 - **`index.html`** — Calendar view showing all reservations by month, with category filters and an equipment directory
 - **`reserve.html`** — Reservation form (name, PI, fund number, dates/times, notes)
-- **`admin.html`** — Password-protected admin page to view, filter, delete reservations and export CSV
+- **`admin.html`** — Admin-only page to view, filter, delete reservations and export CSV
 
 ## How to Use
 
 1. Open `index.html` in a browser (no server required — just open the file)
-2. Click **Make a Reservation** to book equipment
-3. Use **Admin / Export** to download CSV for billing (default password: `marinelab`)
+2. The calendar is viewable by anyone (no login needed)
+3. Click **Make a Reservation** — requires logging in with an approved email
+4. Use **Admin / Export** — requires logging in with an admin email
+
+### User Roles
+
+| Role | View Calendar | Make Reservations | Delete / Export |
+|------|:---:|:---:|:---:|
+| Anyone (no login) | Yes | No | No |
+| User | Yes | Yes | No |
+| Admin | Yes | Yes | Yes |
 
 ## Equipment (examples — edit `app.js` to customize)
 
@@ -37,7 +46,8 @@ All configuration lives in `app.js`:
 
 - **`EQUIPMENT`** array — add, remove, or rename equipment
 - **`PI_LIST`** array — update with real PI names
-- **`ADMIN_PASSWORD`** in `admin.html` — change before deploying
+- **`ADMIN_EMAILS`** array — emails with admin access (delete, export CSV)
+- **`USER_EMAILS`** array — emails with user access (make reservations)
 
 ## Tech Stack
 
