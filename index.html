@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equipment Calendar — Marine Science Lab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ======== Navigation ======== -->
+  <nav class="top-nav">
+    <div class="nav-inner">
+      <div class="nav-brand">
+        <span class="logo">&#9875;</span>
+        <div>
+          <h1>Marine Science Lab</h1>
+          <div class="subtitle">Equipment Scheduler</div>
+        </div>
+      </div>
+      <div class="nav-links">
+        <a href="index.html" class="active">Calendar</a>
+        <a href="reserve.html">Make a Reservation</a>
+        <a href="admin.html">Admin / Export</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- ======== Page Header ======== -->
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h2>Equipment Calendar</h2>
+        <p>View availability for all boats, rooms, tools, and vehicles.</p>
+      </div>
+      <a href="reserve.html" class="btn btn-primary">+ Make a Reservation</a>
+    </div>
+
+    <!-- ======== Calendar Card ======== -->
+    <div class="card">
+      <div class="calendar-controls">
+        <div class="month-nav">
+          <button id="prevMonth">&larr; Prev</button>
+          <h3 id="monthLabel"></h3>
+          <button id="nextMonth">Next &rarr;</button>
+          <button id="todayBtn" class="btn-outline" style="margin-left:8px;padding:6px 14px;font-size:13px;">Today</button>
+        </div>
+        <div class="filter-group">
+          <button class="filter-btn active" data-cat="all">All</button>
+          <button class="filter-btn" data-cat="boat">Boats</button>
+          <button class="filter-btn" data-cat="room">Rooms</button>
+          <button class="filter-btn" data-cat="tool">Tools</button>
+          <button class="filter-btn" data-cat="vehicle">Vehicles</button>
+        </div>
+      </div>
+
+      <div class="calendar" id="calendarGrid"></div>
+    </div>
+
+    <!-- ======== Equipment Directory ======== -->
+    <div class="card">
+      <h3>Equipment Directory</h3>
+      <div class="equipment-grid" id="equipmentGrid"></div>
+    </div>
+
+  </div><!-- /container -->
+
+  <!-- ======== Reservation Detail Popup ======== -->
+  <div class="res-popup" id="resPopup">
+    <div class="popup-row"><strong>Item:</strong> <span id="popEquip"></span></div>
+    <div class="popup-row"><strong>Who:</strong> <span id="popWho"></span></div>
+    <div class="popup-row"><strong>PI:</strong> <span id="popPI"></span></div>
+    <div class="popup-row"><strong>Fund #:</strong> <span id="popFund"></span></div>
+    <div class="popup-row"><strong>When:</strong> <span id="popWhen"></span></div>
+    <div class="popup-row"><strong>Notes:</strong> <span id="popNotes"></span></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // ---- State ----
+    let viewYear, viewMonth;
+    let activeFilter = "all";
+    const today = new Date();
+
+    function init() {
+      viewYear = today.getFullYear();
+      viewMonth = today.getMonth();
+      seedDemoReservations();
+      renderCalendar();
+      renderEquipment();
+      bindControls();
+    }
+
+    // ---- Render Calendar ----
+    function renderCalendar() {
+      const grid = document.getElementById("calendarGrid");
+      const label = document.getElementById("monthLabel");
+      const monthNames = [
+        "January","February","March","April","May","June",
+        "July","August","September","October","November","December"
+      ];
+      label.textContent = `${monthNames[viewMonth]} ${viewYear}`;
+
+      const days = daysInMonth(viewYear, viewMonth);
+      const startDay = firstDayOfMonth(viewYear, viewMonth);
+
+      // Previous month info
+      const prevMonth = viewMonth === 0 ? 11 : viewMonth - 1;
+      const prevYear = viewMonth === 0 ? viewYear - 1 : viewYear;
+      const prevDays = daysInMonth(prevYear, prevMonth);
+
+      let html = "";
+
+      // Day headers
+      const dayLabels = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      dayLabels.forEach(d => {
+        html += `<div class="day-header">${d}</div>`;
+      });
+
+      // Leading blanks from previous month
+      for (let i = 0; i < startDay; i++) {
+        const d = prevDays - startDay + 1 + i;
+        html += `<div class="day-cell other-month"><div class="day-number">${d}</div></div>`;
+      }
+
+      // Current month days
+      const todayStr = formatDateStr(today.getFullYear(), today.getMonth(), today.getDate());
+
+      for (let d = 1; d <= days; d++) {
+        const dateStr = formatDateStr(viewYear, viewMonth, d);
+        const isToday = dateStr === todayStr;
+        const classes = ["day-cell"];
+        if (isToday) classes.push("today");
+
+        const reservations = getReservationsForDate(dateStr, activeFilter);
+
+        let chips = "";
+        reservations.forEach(r => {
+          const eq = getEquipmentById(r.equipmentId);
+          if (!eq) return;
+          chips += `<span class="reservation-chip cat-${eq.category}" data-resid="${r.id}" title="${eq.name} — ${r.reservedBy}">${eq.name}</span>`;
+        });
+
+        html += `<div class="${classes.join(" ")}"><div class="day-number">${d}</div>${chips}</div>`;
+      }
+
+      // Trailing days
+      const totalCells = startDay + days;
+      const trailing = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+      for (let i = 1; i <= trailing; i++) {
+        html += `<div class="day-cell other-month"><div class="day-number">${i}</div></div>`;
+      }
+
+      grid.innerHTML = html;
+
+      // Bind chip hover / click
+      grid.querySelectorAll(".reservation-chip").forEach(chip => {
+        chip.addEventListener("mouseenter", showPopup);
+        chip.addEventListener("mouseleave", hidePopup);
+        chip.addEventListener("click", showPopup);
+      });
+    }
+
+    // ---- Popup ----
+    function showPopup(e) {
+      const resId = e.target.dataset.resid;
+      const reservations = getReservations();
+      const r = reservations.find(x => x.id === resId);
+      if (!r) return;
+
+      const eq = getEquipmentById(r.equipmentId);
+      document.getElementById("popEquip").textContent = eq ? `${eq.name} (${eq.aka})` : r.equipmentId;
+      document.getElementById("popWho").textContent = r.reservedBy;
+      document.getElementById("popPI").textContent = r.pi;
+      document.getElementById("popFund").textContent = r.fundNumber;
+      document.getElementById("popWhen").textContent = `${r.startDate} ${r.startTime} — ${r.endDate} ${r.endTime}`;
+      document.getElementById("popNotes").textContent = r.notes || "—";
+
+      const popup = document.getElementById("resPopup");
+      const rect = e.target.getBoundingClientRect();
+      popup.style.top = (rect.bottom + window.scrollY + 4) + "px";
+      popup.style.left = Math.min(rect.left + window.scrollX, window.innerWidth - 260) + "px";
+      popup.style.display = "block";
+    }
+
+    function hidePopup() {
+      document.getElementById("resPopup").style.display = "none";
+    }
+
+    // ---- Render Equipment Directory ----
+    function renderEquipment() {
+      const grid = document.getElementById("equipmentGrid");
+      let html = "";
+      EQUIPMENT.forEach(eq => {
+        html += `
+          <div class="equip-card">
+            <span class="equip-category cat-${eq.category}">${getCategoryLabel(eq.category)}</span>
+            <div class="equip-name">${eq.name}</div>
+            <div class="equip-aka">${eq.aka}</div>
+            <div class="equip-desc">${eq.description}</div>
+          </div>`;
+      });
+      grid.innerHTML = html;
+    }
+
+    // ---- Controls ----
+    function bindControls() {
+      document.getElementById("prevMonth").addEventListener("click", () => {
+        viewMonth--;
+        if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+        renderCalendar();
+      });
+      document.getElementById("nextMonth").addEventListener("click", () => {
+        viewMonth++;
+        if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+        renderCalendar();
+      });
+      document.getElementById("todayBtn").addEventListener("click", () => {
+        viewYear = today.getFullYear();
+        viewMonth = today.getMonth();
+        renderCalendar();
+      });
+
+      // Category filters
+      document.querySelectorAll(".filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          activeFilter = btn.dataset.cat;
+          renderCalendar();
+        });
+      });
+
+      // Close popup on outside click
+      document.addEventListener("click", (e) => {
+        if (!e.target.classList.contains("reservation-chip")) {
+          hidePopup();
+        }
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

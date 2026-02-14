@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin &amp; Billing Export — Marine Science Lab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ======== Navigation ======== -->
+  <nav class="top-nav">
+    <div class="nav-inner">
+      <div class="nav-brand">
+        <span class="logo">&#9875;</span>
+        <div>
+          <h1>Marine Science Lab</h1>
+          <div class="subtitle">Equipment Scheduler</div>
+        </div>
+      </div>
+      <div class="nav-links">
+        <a href="index.html">Calendar</a>
+        <a href="reserve.html">Make a Reservation</a>
+        <a href="admin.html" class="active">Admin / Export</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- ======== Password Gate ======== -->
+    <div id="passwordGate" class="password-gate">
+      <div class="password-box card">
+        <h2>Admin Access</h2>
+        <p>Enter the admin password to view reservations and export billing data.</p>
+        <input type="password" id="passwordInput" placeholder="Password" autofocus />
+        <div id="passwordError" class="alert alert-error hidden" style="margin-bottom:12px;">Incorrect password. Try again.</div>
+        <button class="btn btn-primary" onclick="checkPassword()">Unlock</button>
+        <p class="mt-16" style="font-size:12px;color:var(--storm);">
+          Default password: <code>marinelab</code> &mdash; change it in the source when you deploy.
+        </p>
+      </div>
+    </div>
+
+    <!-- ======== Admin Content (hidden until authenticated) ======== -->
+    <div id="adminContent" class="hidden">
+
+      <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <div>
+          <h2>Reservations &amp; Billing Export</h2>
+          <p>Review all reservations and download CSV for billing and records.</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-success" onclick="downloadCSV()">Download CSV</button>
+          <button class="btn btn-outline" onclick="copyCSV()">Copy CSV to Clipboard</button>
+        </div>
+      </div>
+
+      <!-- ======== Filters ======== -->
+      <div class="card">
+        <h3>Filter Reservations</h3>
+        <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+          <div class="form-group">
+            <label for="filterCategory">Category</label>
+            <select id="filterCategory">
+              <option value="all">All Categories</option>
+              <option value="boat">Boats</option>
+              <option value="room">Rooms</option>
+              <option value="tool">Tools</option>
+              <option value="vehicle">Vehicles</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="filterPI">PI</label>
+            <select id="filterPI">
+              <option value="all">All PIs</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="filterFrom">From Date</label>
+            <input type="date" id="filterFrom" />
+          </div>
+          <div class="form-group">
+            <label for="filterTo">To Date</label>
+            <input type="date" id="filterTo" />
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== Stats ======== -->
+      <div class="card" style="display:flex;gap:32px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:28px;font-weight:700;color:var(--ocean);" id="statTotal">0</div>
+          <div style="font-size:13px;color:var(--storm);">Total Reservations</div>
+        </div>
+        <div>
+          <div style="font-size:28px;font-weight:700;color:var(--kelp);" id="statFiltered">0</div>
+          <div style="font-size:13px;color:var(--storm);">Shown (Filtered)</div>
+        </div>
+        <div>
+          <div style="font-size:28px;font-weight:700;color:var(--coral);" id="statPIs">0</div>
+          <div style="font-size:13px;color:var(--storm);">Unique PIs</div>
+        </div>
+        <div>
+          <div style="font-size:28px;font-weight:700;color:#8b5cf6;" id="statFunds">0</div>
+          <div style="font-size:13px;color:var(--storm);">Unique Fund #s</div>
+        </div>
+      </div>
+
+      <!-- ======== Reservations Table ======== -->
+      <div class="card" style="overflow-x:auto;">
+        <h3>All Reservations</h3>
+        <table class="data-table" id="resTable">
+          <thead>
+            <tr>
+              <th>Equipment</th>
+              <th>Category</th>
+              <th>Reserved By</th>
+              <th>PI</th>
+              <th>Fund #</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="resTableBody"></tbody>
+        </table>
+        <p id="noResults" class="text-center mt-16 hidden" style="color:#999;">No reservations match your filters.</p>
+      </div>
+
+    </div><!-- /adminContent -->
+
+  </div><!-- /container -->
+
+  <!-- ======== Delete Confirmation Modal ======== -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+      <h3>Delete Reservation?</h3>
+      <p class="mt-8">This will permanently remove this reservation. This cannot be undone.</p>
+      <p class="mt-8" id="deleteDetails" style="font-weight:600;"></p>
+      <div class="mt-16" style="display:flex;gap:8px;">
+        <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+        <button class="btn btn-outline" onclick="closeDeleteModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // ---- Password ----
+    // Change this password for your deployment
+    const ADMIN_PASSWORD = "marinelab";
+    const SESSION_KEY = "marinelab_admin_auth";
+
+    function checkPassword() {
+      const input = document.getElementById("passwordInput").value;
+      if (input === ADMIN_PASSWORD) {
+        sessionStorage.setItem(SESSION_KEY, "true");
+        showAdmin();
+      } else {
+        document.getElementById("passwordError").classList.remove("hidden");
+        document.getElementById("passwordInput").value = "";
+        document.getElementById("passwordInput").focus();
+      }
+    }
+
+    // Allow Enter key on password field
+    document.getElementById("passwordInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") checkPassword();
+    });
+
+    function showAdmin() {
+      document.getElementById("passwordGate").classList.add("hidden");
+      document.getElementById("adminContent").classList.remove("hidden");
+      populateFilters();
+      renderTable();
+      bindFilters();
+    }
+
+    // Check if already authed this session
+    if (sessionStorage.getItem(SESSION_KEY) === "true") {
+      showAdmin();
+    }
+
+    // ---- Filters ----
+    function populateFilters() {
+      const piSel = document.getElementById("filterPI");
+      PI_LIST.forEach(pi => {
+        const opt = document.createElement("option");
+        opt.value = pi;
+        opt.textContent = pi;
+        piSel.appendChild(opt);
+      });
+    }
+
+    function bindFilters() {
+      ["filterCategory", "filterPI", "filterFrom", "filterTo"].forEach(id => {
+        document.getElementById(id).addEventListener("change", renderTable);
+      });
+    }
+
+    function getFilteredReservations() {
+      let reservations = getReservations();
+      const cat = document.getElementById("filterCategory").value;
+      const pi = document.getElementById("filterPI").value;
+      const from = document.getElementById("filterFrom").value;
+      const to = document.getElementById("filterTo").value;
+
+      if (cat !== "all") {
+        reservations = reservations.filter(r => {
+          const eq = getEquipmentById(r.equipmentId);
+          return eq && eq.category === cat;
+        });
+      }
+
+      if (pi !== "all") {
+        reservations = reservations.filter(r => r.pi === pi);
+      }
+
+      if (from) {
+        reservations = reservations.filter(r => r.endDate >= from);
+      }
+
+      if (to) {
+        reservations = reservations.filter(r => r.startDate <= to);
+      }
+
+      return reservations.sort((a, b) => a.startDate.localeCompare(b.startDate));
+    }
+
+    // ---- Table ----
+    function renderTable() {
+      const all = getReservations();
+      const filtered = getFilteredReservations();
+      const body = document.getElementById("resTableBody");
+      const noResults = document.getElementById("noResults");
+
+      // Stats
+      document.getElementById("statTotal").textContent = all.length;
+      document.getElementById("statFiltered").textContent = filtered.length;
+      document.getElementById("statPIs").textContent = new Set(all.map(r => r.pi)).size;
+      document.getElementById("statFunds").textContent = new Set(all.map(r => r.fundNumber)).size;
+
+      if (filtered.length === 0) {
+        body.innerHTML = "";
+        noResults.classList.remove("hidden");
+        return;
+      }
+
+      noResults.classList.add("hidden");
+
+      body.innerHTML = filtered.map(r => {
+        const eq = getEquipmentById(r.equipmentId);
+        return `<tr>
+          <td>${eq ? eq.name : r.equipmentId}</td>
+          <td><span class="equip-category cat-${eq ? eq.category : ''}" style="font-size:10px;padding:2px 8px;">${eq ? getCategoryLabel(eq.category) : ''}</span></td>
+          <td>${r.reservedBy}</td>
+          <td>${r.pi}</td>
+          <td>${r.fundNumber}</td>
+          <td>${r.startDate} ${r.startTime}</td>
+          <td>${r.endDate} ${r.endTime}</td>
+          <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${(r.notes || '').replace(/"/g, '&quot;')}">${r.notes || '—'}</td>
+          <td><button class="btn btn-danger" style="padding:4px 12px;font-size:12px;" onclick="confirmDelete('${r.id}')">Delete</button></td>
+        </tr>`;
+      }).join("");
+    }
+
+    // ---- Delete ----
+    let pendingDeleteId = null;
+
+    function confirmDelete(id) {
+      pendingDeleteId = id;
+      const r = getReservations().find(x => x.id === id);
+      const eq = getEquipmentById(r.equipmentId);
+      document.getElementById("deleteDetails").textContent =
+        `${eq ? eq.name : r.equipmentId} — ${r.reservedBy} — ${r.startDate}`;
+      document.getElementById("deleteModal").classList.add("show");
+    }
+
+    document.getElementById("confirmDeleteBtn").addEventListener("click", () => {
+      if (pendingDeleteId) {
+        deleteReservation(pendingDeleteId);
+        pendingDeleteId = null;
+        closeDeleteModal();
+        renderTable();
+      }
+    });
+
+    function closeDeleteModal() {
+      document.getElementById("deleteModal").classList.remove("show");
+      pendingDeleteId = null;
+    }
+
+    // ---- Copy CSV ----
+    function copyCSV() {
+      const csv = reservationsToCSV();
+      if (!csv) {
+        alert("No reservations to copy.");
+        return;
+      }
+      navigator.clipboard.writeText(csv).then(() => {
+        alert("CSV copied to clipboard! Paste into Excel or Google Sheets.");
+      }).catch(() => {
+        // Fallback
+        const ta = document.createElement("textarea");
+        ta.value = csv;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        alert("CSV copied to clipboard!");
+      });
+    }
+  </script>
+</body>
+</html>

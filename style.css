@@ -1,0 +1,606 @@
+/* ============================================
+   Marine Science Lab Equipment Scheduler
+   Shared Stylesheet
+   ============================================ */
+
+:root {
+  --navy: #1b2a4a;
+  --ocean: #2c5f8a;
+  --teal: #3a8f9f;
+  --seafoam: #6ec6c8;
+  --sand: #f4f1eb;
+  --white: #ffffff;
+  --coral: #e07456;
+  --kelp: #3d7a5f;
+  --storm: #6b7280;
+  --light-gray: #e5e7eb;
+  --danger: #dc3545;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--sand);
+  color: var(--navy);
+  min-height: 100vh;
+}
+
+/* ---------- Top Navigation ---------- */
+.top-nav {
+  background: linear-gradient(135deg, var(--navy), var(--ocean));
+  color: var(--white);
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.nav-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.nav-brand .logo {
+  font-size: 28px;
+}
+
+.nav-brand h1 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.nav-brand .subtitle {
+  font-size: 11px;
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-links a {
+  color: var(--white);
+  text-decoration: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+  opacity: 0.85;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+  background: rgba(255, 255, 255, 0.15);
+  opacity: 1;
+}
+
+/* ---------- Main Container ---------- */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* ---------- Page Header ---------- */
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-header h2 {
+  font-size: 26px;
+  color: var(--navy);
+  margin-bottom: 4px;
+}
+
+.page-header p {
+  color: var(--storm);
+  font-size: 15px;
+}
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--white);
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.card h3 {
+  font-size: 18px;
+  margin-bottom: 16px;
+  color: var(--navy);
+  border-bottom: 2px solid var(--seafoam);
+  padding-bottom: 8px;
+}
+
+/* ---------- Calendar Controls ---------- */
+.calendar-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.calendar-controls .month-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.calendar-controls .month-nav h3 {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 200px;
+  text-align: center;
+  font-size: 20px;
+}
+
+.calendar-controls button {
+  background: var(--ocean);
+  color: var(--white);
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.calendar-controls button:hover {
+  background: var(--navy);
+}
+
+.filter-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  background: var(--light-gray) !important;
+  color: var(--navy) !important;
+  font-size: 13px !important;
+  padding: 6px 14px !important;
+  border-radius: 20px !important;
+}
+
+.filter-btn:hover,
+.filter-btn.active {
+  background: var(--teal) !important;
+  color: var(--white) !important;
+}
+
+/* ---------- Calendar Grid ---------- */
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--light-gray);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.calendar .day-header {
+  background: var(--ocean);
+  color: var(--white);
+  padding: 10px 4px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.calendar .day-cell {
+  background: var(--white);
+  min-height: 110px;
+  padding: 6px;
+  position: relative;
+  vertical-align: top;
+}
+
+.calendar .day-cell.other-month {
+  background: #f9f9f9;
+  color: #ccc;
+}
+
+.calendar .day-cell.today {
+  background: #eef7ff;
+  box-shadow: inset 0 0 0 2px var(--ocean);
+}
+
+.day-number {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--navy);
+}
+
+.other-month .day-number {
+  color: #ccc;
+}
+
+/* Reservation chips on calendar */
+.reservation-chip {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  color: var(--white);
+  display: block;
+}
+
+.reservation-chip.cat-boat { background: var(--ocean); }
+.reservation-chip.cat-room { background: var(--kelp); }
+.reservation-chip.cat-tool { background: var(--coral); }
+.reservation-chip.cat-vehicle { background: #8b5cf6; }
+
+/* ---------- Equipment List (sidebar / section) ---------- */
+.equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.equip-card {
+  border: 1px solid var(--light-gray);
+  border-radius: 8px;
+  padding: 16px;
+  transition: box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.equip-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.equip-card .equip-name {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--navy);
+}
+
+.equip-card .equip-aka {
+  font-size: 12px;
+  color: var(--storm);
+  font-style: italic;
+}
+
+.equip-card .equip-category {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 20px;
+  color: var(--white);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: fit-content;
+}
+
+.equip-category.cat-boat { background: var(--ocean); }
+.equip-category.cat-room { background: var(--kelp); }
+.equip-category.cat-tool { background: var(--coral); }
+.equip-category.cat-vehicle { background: #8b5cf6; }
+
+.equip-card .equip-desc {
+  font-size: 13px;
+  color: var(--storm);
+  line-height: 1.4;
+}
+
+/* ---------- Forms ---------- */
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: var(--navy);
+}
+
+.form-group label .required {
+  color: var(--danger);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--light-gray);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(58, 143, 159, 0.15);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  font-family: inherit;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-primary {
+  background: var(--ocean);
+  color: var(--white);
+}
+
+.btn-primary:hover {
+  background: var(--navy);
+}
+
+.btn-success {
+  background: var(--kelp);
+  color: var(--white);
+}
+
+.btn-success:hover {
+  background: #2d5e47;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: var(--white);
+}
+
+.btn-danger:hover {
+  background: #b02a37;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--ocean);
+  border: 2px solid var(--ocean);
+}
+
+.btn-outline:hover {
+  background: var(--ocean);
+  color: var(--white);
+}
+
+/* ---------- Tables ---------- */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table th {
+  background: var(--navy);
+  color: var(--white);
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.data-table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--light-gray);
+}
+
+.data-table tbody tr:hover {
+  background: #f0f7ff;
+}
+
+/* ---------- Modal / Overlay ---------- */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.show {
+  display: flex;
+}
+
+.modal {
+  background: var(--white);
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modal h3 {
+  margin-bottom: 16px;
+  font-size: 20px;
+}
+
+.modal .btn {
+  margin-top: 8px;
+}
+
+/* ---------- Alerts ---------- */
+.alert {
+  padding: 14px 18px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.alert-success {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.alert-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.alert-info {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+/* ---------- Reservation detail popup ---------- */
+.res-popup {
+  position: absolute;
+  background: var(--white);
+  border: 1px solid var(--light-gray);
+  border-radius: 8px;
+  padding: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 500;
+  min-width: 220px;
+  font-size: 13px;
+  display: none;
+}
+
+.res-popup .popup-row {
+  margin-bottom: 4px;
+}
+
+.res-popup .popup-row strong {
+  display: inline-block;
+  width: 70px;
+}
+
+/* ---------- Password overlay ---------- */
+.password-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.password-box {
+  text-align: center;
+  max-width: 400px;
+}
+
+.password-box h2 {
+  margin-bottom: 8px;
+}
+
+.password-box p {
+  margin-bottom: 20px;
+  color: var(--storm);
+}
+
+.password-box input {
+  padding: 12px 16px;
+  border: 2px solid var(--light-gray);
+  border-radius: 6px;
+  font-size: 16px;
+  width: 100%;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+/* ---------- Utility ---------- */
+.text-center { text-align: center; }
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mb-16 { margin-bottom: 16px; }
+.hidden { display: none !important; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .nav-inner {
+    flex-direction: column;
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar .day-cell {
+    min-height: 70px;
+    padding: 4px;
+  }
+
+  .day-number {
+    font-size: 11px;
+  }
+
+  .reservation-chip {
+    font-size: 8px;
+    padding: 1px 4px;
+  }
+
+  .equipment-grid {
+    grid-template-columns: 1fr;
+  }
+}

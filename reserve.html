@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Make a Reservation — Marine Science Lab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ======== Navigation ======== -->
+  <nav class="top-nav">
+    <div class="nav-inner">
+      <div class="nav-brand">
+        <span class="logo">&#9875;</span>
+        <div>
+          <h1>Marine Science Lab</h1>
+          <div class="subtitle">Equipment Scheduler</div>
+        </div>
+      </div>
+      <div class="nav-links">
+        <a href="index.html">Calendar</a>
+        <a href="reserve.html" class="active">Make a Reservation</a>
+        <a href="admin.html">Admin / Export</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <div class="page-header">
+      <h2>Make a Reservation</h2>
+      <p>Fill out the form below to reserve equipment, a room, boat, or vehicle.</p>
+    </div>
+
+    <!-- ======== Alert (hidden by default) ======== -->
+    <div id="alertBox" class="alert hidden"></div>
+
+    <!-- ======== Reservation Form ======== -->
+    <div class="card">
+      <h3>Reservation Details</h3>
+      <form id="reservationForm" novalidate>
+
+        <!-- Equipment selection -->
+        <div class="form-group">
+          <label for="equipmentId">Equipment / Resource <span class="required">*</span></label>
+          <select id="equipmentId" required>
+            <option value="">— Select equipment —</option>
+          </select>
+        </div>
+
+        <!-- Name & PI -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="reservedBy">Your Name <span class="required">*</span></label>
+            <input type="text" id="reservedBy" placeholder="e.g. Jane Smith" required />
+          </div>
+          <div class="form-group">
+            <label for="pi">Principal Investigator (PI) <span class="required">*</span></label>
+            <select id="pi" required>
+              <option value="">— Select PI —</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Fund number -->
+        <div class="form-group">
+          <label for="fundNumber">Fund / Account Number <span class="required">*</span></label>
+          <input type="text" id="fundNumber" placeholder="e.g. NSF-OCE-2401 or campus index" required />
+        </div>
+
+        <!-- Dates & Times -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="startDate">Start Date <span class="required">*</span></label>
+            <input type="date" id="startDate" required />
+          </div>
+          <div class="form-group">
+            <label for="startTime">Start Time <span class="required">*</span></label>
+            <input type="time" id="startTime" value="08:00" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="endDate">End Date <span class="required">*</span></label>
+            <input type="date" id="endDate" required />
+          </div>
+          <div class="form-group">
+            <label for="endTime">End Time <span class="required">*</span></label>
+            <input type="time" id="endTime" value="17:00" required />
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="form-group">
+          <label for="notes">Notes (optional)</label>
+          <textarea id="notes" rows="3" placeholder="Purpose of reservation, special needs, number of people, etc."></textarea>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="btn btn-primary">Submit Reservation</button>
+        <a href="index.html" class="btn btn-outline" style="margin-left:8px;">Cancel</a>
+      </form>
+    </div>
+
+    <!-- ======== Quick Preview: Existing reservations for selected equipment ======== -->
+    <div class="card" id="previewCard" style="display:none;">
+      <h3 id="previewTitle">Upcoming Reservations</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Dates</th>
+            <th>Times</th>
+            <th>Reserved By</th>
+            <th>PI</th>
+          </tr>
+        </thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+      <p id="previewEmpty" class="text-center mt-8" style="color:#999;display:none;">No upcoming reservations for this item.</p>
+    </div>
+
+  </div><!-- /container -->
+
+  <!-- ======== Success Modal ======== -->
+  <div class="modal-overlay" id="successModal">
+    <div class="modal text-center">
+      <h3 style="color:var(--kelp);">Reservation Confirmed!</h3>
+      <p class="mt-8" id="successDetails"></p>
+      <div class="mt-16">
+        <a href="index.html" class="btn btn-primary">View Calendar</a>
+        <button class="btn btn-outline" onclick="closeModalAndReset()" style="margin-left:8px;">Make Another</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    function init() {
+      populateEquipmentDropdown();
+      populatePIDropdown();
+      setDefaultDates();
+      bindForm();
+      bindPreview();
+    }
+
+    // ---- Populate Dropdowns ----
+    function populateEquipmentDropdown() {
+      const sel = document.getElementById("equipmentId");
+      const categories = ["boat", "room", "tool", "vehicle"];
+      categories.forEach(cat => {
+        const group = document.createElement("optgroup");
+        group.label = getCategoryLabel(cat) + "s";
+        getEquipmentByCategory(cat).forEach(eq => {
+          const opt = document.createElement("option");
+          opt.value = eq.id;
+          opt.textContent = `${eq.name}  —  ${eq.aka}`;
+          group.appendChild(opt);
+        });
+        sel.appendChild(group);
+      });
+    }
+
+    function populatePIDropdown() {
+      const sel = document.getElementById("pi");
+      PI_LIST.forEach(pi => {
+        const opt = document.createElement("option");
+        opt.value = pi;
+        opt.textContent = pi;
+        sel.appendChild(opt);
+      });
+    }
+
+    function setDefaultDates() {
+      const today = new Date();
+      const todayStr = today.toISOString().slice(0, 10);
+      document.getElementById("startDate").value = todayStr;
+      document.getElementById("endDate").value = todayStr;
+      document.getElementById("startDate").min = todayStr;
+      document.getElementById("endDate").min = todayStr;
+    }
+
+    // ---- Sync end date when start date changes ----
+    function bindForm() {
+      const startDate = document.getElementById("startDate");
+      const endDate = document.getElementById("endDate");
+
+      startDate.addEventListener("change", () => {
+        if (endDate.value < startDate.value) {
+          endDate.value = startDate.value;
+        }
+        endDate.min = startDate.value;
+        updatePreview();
+      });
+
+      // Form submission
+      document.getElementById("reservationForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        submitReservation();
+      });
+    }
+
+    // ---- Preview existing reservations for selected equipment ----
+    function bindPreview() {
+      document.getElementById("equipmentId").addEventListener("change", updatePreview);
+    }
+
+    function updatePreview() {
+      const eqId = document.getElementById("equipmentId").value;
+      const card = document.getElementById("previewCard");
+      const body = document.getElementById("previewBody");
+      const empty = document.getElementById("previewEmpty");
+      const title = document.getElementById("previewTitle");
+
+      if (!eqId) {
+        card.style.display = "none";
+        return;
+      }
+
+      const eq = getEquipmentById(eqId);
+      title.textContent = `Upcoming Reservations for ${eq.name}`;
+
+      const today = new Date().toISOString().slice(0, 10);
+      const reservations = getReservations()
+        .filter(r => r.equipmentId === eqId && r.endDate >= today)
+        .sort((a, b) => a.startDate.localeCompare(b.startDate));
+
+      card.style.display = "block";
+
+      if (reservations.length === 0) {
+        body.innerHTML = "";
+        empty.style.display = "block";
+        return;
+      }
+
+      empty.style.display = "none";
+      body.innerHTML = reservations.map(r => `
+        <tr>
+          <td>${r.startDate} to ${r.endDate}</td>
+          <td>${r.startTime} – ${r.endTime}</td>
+          <td>${r.reservedBy}</td>
+          <td>${r.pi}</td>
+        </tr>
+      `).join("");
+    }
+
+    // ---- Submit ----
+    function submitReservation() {
+      const fields = {
+        equipmentId: document.getElementById("equipmentId").value,
+        reservedBy: document.getElementById("reservedBy").value.trim(),
+        pi: document.getElementById("pi").value,
+        fundNumber: document.getElementById("fundNumber").value.trim(),
+        startDate: document.getElementById("startDate").value,
+        startTime: document.getElementById("startTime").value,
+        endDate: document.getElementById("endDate").value,
+        endTime: document.getElementById("endTime").value,
+        notes: document.getElementById("notes").value.trim(),
+      };
+
+      // Validation
+      const alertBox = document.getElementById("alertBox");
+      const errors = [];
+
+      if (!fields.equipmentId) errors.push("Please select equipment.");
+      if (!fields.reservedBy) errors.push("Please enter your name.");
+      if (!fields.pi) errors.push("Please select a PI.");
+      if (!fields.fundNumber) errors.push("Please enter a fund number.");
+      if (!fields.startDate) errors.push("Please select a start date.");
+      if (!fields.endDate) errors.push("Please select an end date.");
+      if (!fields.startTime) errors.push("Please select a start time.");
+      if (!fields.endTime) errors.push("Please select an end time.");
+
+      if (fields.startDate && fields.endDate && fields.startDate > fields.endDate) {
+        errors.push("End date cannot be before start date.");
+      }
+      if (fields.startDate === fields.endDate && fields.startTime && fields.endTime && fields.startTime >= fields.endTime) {
+        errors.push("End time must be after start time on the same day.");
+      }
+
+      if (errors.length) {
+        alertBox.className = "alert alert-error";
+        alertBox.textContent = errors.join(" ");
+        alertBox.classList.remove("hidden");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      alertBox.classList.add("hidden");
+
+      // Save
+      const res = addReservation(fields);
+      const eq = getEquipmentById(fields.equipmentId);
+
+      // Show success
+      document.getElementById("successDetails").textContent =
+        `${eq.name} reserved by ${fields.reservedBy} from ${fields.startDate} to ${fields.endDate}.`;
+      document.getElementById("successModal").classList.add("show");
+    }
+
+    function closeModalAndReset() {
+      document.getElementById("successModal").classList.remove("show");
+      document.getElementById("reservationForm").reset();
+      setDefaultDates();
+      document.getElementById("previewCard").style.display = "none";
+      document.getElementById("alertBox").classList.add("hidden");
+    }
+
+    init();
+  </script>
+</body>
+</html>
