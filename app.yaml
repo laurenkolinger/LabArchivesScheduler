@@ -1,0 +1,18 @@
+runtime: nodejs22
+
+instance_class: F1
+
+env_variables:
+  PORT: "8080"
+  # Set these in the GCP Console under App Engine > Settings > Environment Variables
+  # or use: gcloud app deploy --set-env-vars="KEY=value"
+  #
+  # SESSION_SECRET: "your-random-secret-here"
+  # ALLOWED_DOMAIN: "uvi.edu"
+  # ADMIN_EMAILS: "admin@uvi.edu,labmanager@uvi.edu"
+  # SMTP_HOST: "smtp.gmail.com"
+  # SMTP_PORT: "587"
+  # SMTP_USER: "your-email@gmail.com"
+  # SMTP_PASS: "your-app-password"
+  # SMTP_FROM: "Marine Science Lab <noreply@uvi.edu>"
+  # BASE_URL: "https://your-project.appspot.com"

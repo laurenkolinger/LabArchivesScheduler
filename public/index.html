@@ -8,7 +8,6 @@
 </head>
 <body>
 
-  <!-- ======== Navigation ======== -->
   <nav class="top-nav">
     <div class="nav-inner">
       <div class="nav-brand">
@@ -28,7 +27,6 @@
 
   <div class="container">
 
-    <!-- ======== Page Header ======== -->
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
       <div>
         <h2>Equipment Calendar</h2>
@@ -37,7 +35,6 @@
       <a href="reserve.html" class="btn btn-primary">+ Make a Reservation</a>
     </div>
 
-    <!-- ======== Calendar Card ======== -->
     <div class="card">
       <div class="calendar-controls">
         <div class="month-nav">
@@ -54,19 +51,16 @@
           <button class="filter-btn" data-cat="vehicle">Vehicles</button>
         </div>
       </div>
-
       <div class="calendar" id="calendarGrid"></div>
     </div>
 
-    <!-- ======== Equipment Directory ======== -->
     <div class="card">
       <h3>Equipment Directory</h3>
       <div class="equipment-grid" id="equipmentGrid"></div>
     </div>
 
-  </div><!-- /container -->
+  </div>
 
-  <!-- ======== Reservation Detail Popup ======== -->
   <div class="res-popup" id="resPopup">
     <div class="popup-row"><strong>Item:</strong> <span id="popEquip"></span></div>
     <div class="popup-row"><strong>Who:</strong> <span id="popWho"></span></div>
@@ -78,54 +72,44 @@
 
   <script src="app.js"></script>
   <script>
-    // ---- State ----
     let viewYear, viewMonth;
     let activeFilter = "all";
+    let allReservations = [];
     const today = new Date();
 
-    function init() {
+    async function init() {
       viewYear = today.getFullYear();
       viewMonth = today.getMonth();
-      seedDemoReservations();
-      renderAuthUI();
+
+      await renderAuthUI();
+
+      // Fetch reservations from server
+      allReservations = await getReservations();
+
       renderCalendar();
       renderEquipment();
       bindControls();
     }
 
-    // ---- Render Calendar ----
     function renderCalendar() {
       const grid = document.getElementById("calendarGrid");
       const label = document.getElementById("monthLabel");
-      const monthNames = [
-        "January","February","March","April","May","June",
-        "July","August","September","October","November","December"
-      ];
+      const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
       label.textContent = `${monthNames[viewMonth]} ${viewYear}`;
 
       const days = daysInMonth(viewYear, viewMonth);
       const startDay = firstDayOfMonth(viewYear, viewMonth);
-
-      // Previous month info
-      const prevMonth = viewMonth === 0 ? 11 : viewMonth - 1;
-      const prevYear = viewMonth === 0 ? viewYear - 1 : viewYear;
-      const prevDays = daysInMonth(prevYear, prevMonth);
+      const prevMo = viewMonth === 0 ? 11 : viewMonth - 1;
+      const prevYr = viewMonth === 0 ? viewYear - 1 : viewYear;
+      const prevDays = daysInMonth(prevYr, prevMo);
 
       let html = "";
+      ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(d => { html += `<div class="day-header">${d}</div>`; });
 
-      // Day headers
-      const dayLabels = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-      dayLabels.forEach(d => {
-        html += `<div class="day-header">${d}</div>`;
-      });
-
-      // Leading blanks from previous month
       for (let i = 0; i < startDay; i++) {
-        const d = prevDays - startDay + 1 + i;
-        html += `<div class="day-cell other-month"><div class="day-number">${d}</div></div>`;
+        html += `<div class="day-cell other-month"><div class="day-number">${prevDays - startDay + 1 + i}</div></div>`;
       }
 
-      // Current month days
       const todayStr = formatDateStr(today.getFullYear(), today.getMonth(), today.getDate());
 
       for (let d = 1; d <= days; d++) {
@@ -134,10 +118,9 @@
         const classes = ["day-cell"];
         if (isToday) classes.push("today");
 
-        const reservations = getReservationsForDate(dateStr, activeFilter);
-
+        const dayRes = getReservationsForDate(allReservations, dateStr, activeFilter);
         let chips = "";
-        reservations.forEach(r => {
+        dayRes.forEach(r => {
           const eq = getEquipmentById(r.equipmentId);
           if (!eq) return;
           chips += `<span class="reservation-chip cat-${eq.category}" data-resid="${r.id}" title="${eq.name} — ${r.reservedBy}">${eq.name}</span>`;
@@ -146,7 +129,6 @@
         html += `<div class="${classes.join(" ")}"><div class="day-number">${d}</div>${chips}</div>`;
       }
 
-      // Trailing days
       const totalCells = startDay + days;
       const trailing = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
       for (let i = 1; i <= trailing; i++) {
@@ -155,7 +137,6 @@
 
       grid.innerHTML = html;
 
-      // Bind chip hover / click
       grid.querySelectorAll(".reservation-chip").forEach(chip => {
         chip.addEventListener("mouseenter", showPopup);
         chip.addEventListener("mouseleave", hidePopup);
@@ -163,13 +144,10 @@
       });
     }
 
-    // ---- Popup ----
     function showPopup(e) {
       const resId = e.target.dataset.resid;
-      const reservations = getReservations();
-      const r = reservations.find(x => x.id === resId);
+      const r = allReservations.find(x => x.id === resId);
       if (!r) return;
-
       const eq = getEquipmentById(r.equipmentId);
       document.getElementById("popEquip").textContent = eq ? `${eq.name} (${eq.aka})` : r.equipmentId;
       document.getElementById("popWho").textContent = r.reservedBy;
@@ -185,45 +163,24 @@
       popup.style.display = "block";
     }
 
-    function hidePopup() {
-      document.getElementById("resPopup").style.display = "none";
-    }
+    function hidePopup() { document.getElementById("resPopup").style.display = "none"; }
 
-    // ---- Render Equipment Directory ----
     function renderEquipment() {
       const grid = document.getElementById("equipmentGrid");
-      let html = "";
-      EQUIPMENT.forEach(eq => {
-        html += `
-          <div class="equip-card">
-            <span class="equip-category cat-${eq.category}">${getCategoryLabel(eq.category)}</span>
-            <div class="equip-name">${eq.name}</div>
-            <div class="equip-aka">${eq.aka}</div>
-            <div class="equip-desc">${eq.description}</div>
-          </div>`;
-      });
-      grid.innerHTML = html;
+      grid.innerHTML = EQUIPMENT.map(eq => `
+        <div class="equip-card">
+          <span class="equip-category cat-${eq.category}">${getCategoryLabel(eq.category)}</span>
+          <div class="equip-name">${eq.name}</div>
+          <div class="equip-aka">${eq.aka}</div>
+          <div class="equip-desc">${eq.description}</div>
+        </div>`).join("");
     }
 
-    // ---- Controls ----
     function bindControls() {
-      document.getElementById("prevMonth").addEventListener("click", () => {
-        viewMonth--;
-        if (viewMonth < 0) { viewMonth = 11; viewYear--; }
-        renderCalendar();
-      });
-      document.getElementById("nextMonth").addEventListener("click", () => {
-        viewMonth++;
-        if (viewMonth > 11) { viewMonth = 0; viewYear++; }
-        renderCalendar();
-      });
-      document.getElementById("todayBtn").addEventListener("click", () => {
-        viewYear = today.getFullYear();
-        viewMonth = today.getMonth();
-        renderCalendar();
-      });
+      document.getElementById("prevMonth").addEventListener("click", () => { viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } renderCalendar(); });
+      document.getElementById("nextMonth").addEventListener("click", () => { viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } renderCalendar(); });
+      document.getElementById("todayBtn").addEventListener("click", () => { viewYear = today.getFullYear(); viewMonth = today.getMonth(); renderCalendar(); });
 
-      // Category filters
       document.querySelectorAll(".filter-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
@@ -233,12 +190,7 @@
         });
       });
 
-      // Close popup on outside click
-      document.addEventListener("click", (e) => {
-        if (!e.target.classList.contains("reservation-chip")) {
-          hidePopup();
-        }
-      });
+      document.addEventListener("click", (e) => { if (!e.target.classList.contains("reservation-chip")) hidePopup(); });
     }
 
     init();

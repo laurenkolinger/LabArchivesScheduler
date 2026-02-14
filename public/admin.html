@@ -8,7 +8,6 @@
 </head>
 <body>
 
-  <!-- ======== Navigation ======== -->
   <nav class="top-nav">
     <div class="nav-inner">
       <div class="nav-brand">
@@ -28,20 +27,17 @@
 
   <div class="container">
 
-    <!-- ======== Login Gate (shown when not logged in as admin) ======== -->
-    <div id="adminGate" class="password-gate">
+    <!-- Admin Gate -->
+    <div id="adminGate" class="password-gate hidden">
       <div class="password-box card">
-        <h2>Admin Access</h2>
-        <p>Log in with an admin email to view reservations and export billing data.</p>
-        <button class="btn btn-primary" id="adminLoginBtn">Log In as Admin</button>
-        <p class="mt-16" style="font-size:12px;color:var(--storm);">
-          Example admin: <code>admin@marinelab.edu</code><br/>
-          Edit <code>ADMIN_EMAILS</code> in app.js to manage admin access.
-        </p>
+        <h2>Admin Access Required</h2>
+        <p>You must be logged in with an admin account to access this page.</p>
+        <div id="gateMessage"></div>
+        <a href="/login.html?redirect=/admin.html" class="btn btn-primary mt-16">Log In as Admin</a>
       </div>
     </div>
 
-    <!-- ======== Admin Content (hidden until authenticated) ======== -->
+    <!-- Admin Content -->
     <div id="adminContent" class="hidden">
 
       <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
@@ -50,12 +46,12 @@
           <p>Review all reservations and download CSV for billing and records.</p>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-success" onclick="downloadCSV()">Download CSV</button>
+          <a href="/api/reservations/csv" class="btn btn-success" download>Download CSV</a>
           <button class="btn btn-outline" onclick="copyCSV()">Copy CSV to Clipboard</button>
         </div>
       </div>
 
-      <!-- ======== Filters ======== -->
+      <!-- Filters -->
       <div class="card">
         <h3>Filter Reservations</h3>
         <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
@@ -86,7 +82,7 @@
         </div>
       </div>
 
-      <!-- ======== Stats ======== -->
+      <!-- Stats -->
       <div class="card" style="display:flex;gap:32px;flex-wrap:wrap;">
         <div>
           <div style="font-size:28px;font-weight:700;color:var(--ocean);" id="statTotal">0</div>
@@ -106,7 +102,7 @@
         </div>
       </div>
 
-      <!-- ======== Reservations Table ======== -->
+      <!-- Reservations Table -->
       <div class="card" style="overflow-x:auto;">
         <h3>All Reservations</h3>
         <table class="data-table" id="resTable">
@@ -128,11 +124,11 @@
         <p id="noResults" class="text-center mt-16 hidden" style="color:#999;">No reservations match your filters.</p>
       </div>
 
-    </div><!-- /adminContent -->
+    </div>
 
-  </div><!-- /container -->
+  </div>
 
-  <!-- ======== Delete Confirmation Modal ======== -->
+  <!-- Delete Confirmation Modal -->
   <div class="modal-overlay" id="deleteModal">
     <div class="modal">
       <h3>Delete Reservation?</h3>
@@ -147,47 +143,36 @@
 
   <script src="app.js"></script>
   <script>
-    // ---- Init ----
-    function initAdmin() {
-      renderAuthUI();
+    let allReservations = [];
 
-      // If already logged in as admin, show content immediately
-      if (isAdmin()) {
-        showAdmin();
+    async function initAdmin() {
+      await renderAuthUI();
+
+      if (await isAdmin()) {
+        await showAdmin();
       } else {
-        // Show the gate and bind the login button
-        document.getElementById("adminLoginBtn").addEventListener("click", () => {
-          showLoginModal({
-            requiredRole: "admin",
-            message: "Log in with your admin email to access billing and export tools.",
-            onSuccess: () => showAdmin(),
-          });
-        });
+        // Show gate
+        document.getElementById("adminGate").classList.remove("hidden");
 
-        // If logged in as user (not admin), show a message
-        const user = getCurrentUser();
-        if (user && user.role !== "admin") {
-          const gate = document.getElementById("adminGate");
+        const user = await getCurrentUser();
+        if (user) {
+          const msg = document.getElementById("gateMessage");
           const notice = document.createElement("div");
-          notice.className = "alert alert-info";
-          notice.style.cssText = "margin-top:16px;max-width:400px;";
-          notice.textContent = `You are logged in as ${user.email} (user). Admin access is required for this page. Log out and log in with an admin email, or contact your lab manager.`;
-          gate.querySelector(".password-box").appendChild(notice);
+          notice.className = "alert alert-info mt-16";
+          notice.textContent = `You are logged in as ${user.name} (${user.role}). Admin access is required for this page.`;
+          msg.appendChild(notice);
         }
       }
     }
 
-    function showAdmin() {
+    async function showAdmin() {
       document.getElementById("adminGate").classList.add("hidden");
       document.getElementById("adminContent").classList.remove("hidden");
       populateFilters();
-      renderTable();
+      await renderTable();
       bindFilters();
     }
 
-    initAdmin();
-
-    // ---- Filters ----
     function populateFilters() {
       const piSel = document.getElementById("filterPI");
       PI_LIST.forEach(pi => {
@@ -205,46 +190,32 @@
     }
 
     function getFilteredReservations() {
-      let reservations = getReservations();
+      let reservations = [...allReservations];
       const cat = document.getElementById("filterCategory").value;
       const pi = document.getElementById("filterPI").value;
       const from = document.getElementById("filterFrom").value;
       const to = document.getElementById("filterTo").value;
 
       if (cat !== "all") {
-        reservations = reservations.filter(r => {
-          const eq = getEquipmentById(r.equipmentId);
-          return eq && eq.category === cat;
-        });
+        reservations = reservations.filter(r => { const eq = getEquipmentById(r.equipmentId); return eq && eq.category === cat; });
       }
-
-      if (pi !== "all") {
-        reservations = reservations.filter(r => r.pi === pi);
-      }
-
-      if (from) {
-        reservations = reservations.filter(r => r.endDate >= from);
-      }
-
-      if (to) {
-        reservations = reservations.filter(r => r.startDate <= to);
-      }
+      if (pi !== "all") reservations = reservations.filter(r => r.pi === pi);
+      if (from) reservations = reservations.filter(r => r.endDate >= from);
+      if (to) reservations = reservations.filter(r => r.startDate <= to);
 
       return reservations.sort((a, b) => a.startDate.localeCompare(b.startDate));
     }
 
-    // ---- Table ----
-    function renderTable() {
-      const all = getReservations();
+    async function renderTable() {
+      allReservations = await getReservations();
       const filtered = getFilteredReservations();
       const body = document.getElementById("resTableBody");
       const noResults = document.getElementById("noResults");
 
-      // Stats
-      document.getElementById("statTotal").textContent = all.length;
+      document.getElementById("statTotal").textContent = allReservations.length;
       document.getElementById("statFiltered").textContent = filtered.length;
-      document.getElementById("statPIs").textContent = new Set(all.map(r => r.pi)).size;
-      document.getElementById("statFunds").textContent = new Set(all.map(r => r.fundNumber)).size;
+      document.getElementById("statPIs").textContent = new Set(allReservations.map(r => r.pi)).size;
+      document.getElementById("statFunds").textContent = new Set(allReservations.map(r => r.fundNumber)).size;
 
       if (filtered.length === 0) {
         body.innerHTML = "";
@@ -253,9 +224,9 @@
       }
 
       noResults.classList.add("hidden");
-
       body.innerHTML = filtered.map(r => {
         const eq = getEquipmentById(r.equipmentId);
+        const escapedNotes = (r.notes || "").replace(/"/g, "&quot;");
         return `<tr>
           <td>${eq ? eq.name : r.equipmentId}</td>
           <td><span class="equip-category cat-${eq ? eq.category : ''}" style="font-size:10px;padding:2px 8px;">${eq ? getCategoryLabel(eq.category) : ''}</span></td>
@@ -264,7 +235,7 @@
           <td>${r.fundNumber}</td>
           <td>${r.startDate} ${r.startTime}</td>
           <td>${r.endDate} ${r.endTime}</td>
-          <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${(r.notes || '').replace(/"/g, '&quot;')}">${r.notes || '—'}</td>
+          <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapedNotes}">${r.notes || '—'}</td>
           <td><button class="btn btn-danger" style="padding:4px 12px;font-size:12px;" onclick="confirmDelete('${r.id}')">Delete</button></td>
         </tr>`;
       }).join("");
@@ -275,19 +246,19 @@
 
     function confirmDelete(id) {
       pendingDeleteId = id;
-      const r = getReservations().find(x => x.id === id);
+      const r = allReservations.find(x => x.id === id);
       const eq = getEquipmentById(r.equipmentId);
       document.getElementById("deleteDetails").textContent =
         `${eq ? eq.name : r.equipmentId} — ${r.reservedBy} — ${r.startDate}`;
       document.getElementById("deleteModal").classList.add("show");
     }
 
-    document.getElementById("confirmDeleteBtn").addEventListener("click", () => {
+    document.getElementById("confirmDeleteBtn").addEventListener("click", async () => {
       if (pendingDeleteId) {
-        deleteReservation(pendingDeleteId);
+        await deleteReservation(pendingDeleteId);
         pendingDeleteId = null;
         closeDeleteModal();
-        renderTable();
+        await renderTable();
       }
     });
 
@@ -297,25 +268,19 @@
     }
 
     // ---- Copy CSV ----
-    function copyCSV() {
-      const csv = reservationsToCSV();
-      if (!csv) {
-        alert("No reservations to copy.");
-        return;
-      }
-      navigator.clipboard.writeText(csv).then(() => {
+    async function copyCSV() {
+      try {
+        const resp = await fetch("/api/reservations/csv");
+        const csv = await resp.text();
+        if (!csv || resp.status !== 200) { alert("No reservations to copy."); return; }
+        await navigator.clipboard.writeText(csv);
         alert("CSV copied to clipboard! Paste into Excel or Google Sheets.");
-      }).catch(() => {
-        // Fallback
-        const ta = document.createElement("textarea");
-        ta.value = csv;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-        alert("CSV copied to clipboard!");
-      });
+      } catch {
+        alert("Failed to copy. Try downloading instead.");
+      }
     }
+
+    initAdmin();
   </script>
 </body>
 </html>

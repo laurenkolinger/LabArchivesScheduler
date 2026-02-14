@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log In — Marine Science Lab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <nav class="top-nav">
+    <div class="nav-inner">
+      <div class="nav-brand">
+        <span class="logo">&#9875;</span>
+        <div>
+          <h1>Marine Science Lab</h1>
+          <div class="subtitle">Equipment Scheduler</div>
+        </div>
+      </div>
+      <div class="nav-links">
+        <a href="index.html">Calendar</a>
+        <a href="reserve.html">Make a Reservation</a>
+        <a href="admin.html">Admin / Export</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="password-gate">
+      <div class="card" style="max-width:420px;width:100%;">
+
+        <h2 style="text-align:center;margin-bottom:4px;">Log In</h2>
+        <p style="text-align:center;color:var(--storm);margin-bottom:24px;">
+          Enter your email and password.
+        </p>
+
+        <div id="errorBox" class="alert alert-error hidden"></div>
+        <div id="infoBox" class="alert alert-info hidden"></div>
+
+        <div class="form-group">
+          <label for="emailInput">Email Address</label>
+          <input type="email" id="emailInput" placeholder="you@uvi.edu" autofocus />
+        </div>
+
+        <div class="form-group">
+          <label for="passwordInput">Password</label>
+          <input type="password" id="passwordInput" placeholder="Your password" />
+        </div>
+
+        <button class="btn btn-primary" id="loginBtn" style="width:100%;">Log In</button>
+
+        <p style="text-align:center;margin-top:16px;font-size:14px;color:var(--storm);">
+          Don't have an account? <a href="register.html" style="color:var(--ocean);font-weight:600;">Create one</a>
+        </p>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    (async function init() {
+      await renderAuthUI();
+
+      // If already logged in, redirect
+      if (await isLoggedIn()) {
+        const redirect = new URLSearchParams(window.location.search).get("redirect") || "/index.html";
+        window.location.href = redirect;
+        return;
+      }
+
+      // Show redirect message if applicable
+      const redirect = new URLSearchParams(window.location.search).get("redirect");
+      if (redirect) {
+        const info = document.getElementById("infoBox");
+        info.textContent = "Please log in to continue.";
+        info.classList.remove("hidden");
+      }
+    })();
+
+    document.getElementById("loginBtn").addEventListener("click", doLogin);
+    document.getElementById("emailInput").addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("passwordInput").focus(); });
+    document.getElementById("passwordInput").addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+
+    async function doLogin() {
+      const errorBox = document.getElementById("errorBox");
+      errorBox.classList.add("hidden");
+
+      const email = document.getElementById("emailInput").value.trim();
+      const password = document.getElementById("passwordInput").value;
+
+      if (!email || !password) {
+        errorBox.textContent = "Please enter your email and password.";
+        errorBox.classList.remove("hidden");
+        return;
+      }
+
+      const btn = document.getElementById("loginBtn");
+      btn.disabled = true;
+      btn.textContent = "Logging in...";
+
+      const result = await apiPost("/api/login", { email, password });
+
+      if (result.ok) {
+        clearSessionCache();
+        const redirect = new URLSearchParams(window.location.search).get("redirect") || "/index.html";
+        window.location.href = redirect;
+      } else {
+        errorBox.textContent = result.data.error || "Login failed.";
+        errorBox.classList.remove("hidden");
+        btn.disabled = false;
+        btn.textContent = "Log In";
+        document.getElementById("passwordInput").value = "";
+        document.getElementById("passwordInput").focus();
+      }
+    }
+  </script>
+</body>
+</html>

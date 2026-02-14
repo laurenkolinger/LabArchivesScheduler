@@ -8,7 +8,6 @@
 </head>
 <body>
 
-  <!-- ======== Navigation ======== -->
   <nav class="top-nav">
     <div class="nav-inner">
       <div class="nav-brand">
@@ -33,27 +32,25 @@
       <p>Fill out the form below to reserve equipment, a room, boat, or vehicle.</p>
     </div>
 
-    <!-- ======== Alert (hidden by default) ======== -->
     <div id="alertBox" class="alert hidden"></div>
 
-    <!-- ======== Login Gate (shown when not logged in) ======== -->
-    <div id="loginGate" class="password-gate">
+    <!-- Login Gate -->
+    <div id="loginGate" class="password-gate hidden">
       <div class="password-box card">
         <h2>Login Required</h2>
         <p>You must be logged in to make a reservation.</p>
-        <button class="btn btn-primary" id="loginGateBtn">Log In</button>
+        <a href="/login.html?redirect=/reserve.html" class="btn btn-primary">Log In</a>
         <p class="mt-16" style="font-size:11px;color:var(--storm);">
-          Example user: <code>mulder@marinelab.edu</code>
+          Don't have an account? <a href="/register.html" style="color:var(--ocean);font-weight:600;">Create one</a>
         </p>
       </div>
     </div>
 
-    <!-- ======== Reservation Form (hidden until logged in) ======== -->
+    <!-- Reservation Form -->
     <div class="card hidden" id="reservationCard">
       <h3>Reservation Details</h3>
       <form id="reservationForm" novalidate>
 
-        <!-- Equipment selection -->
         <div class="form-group">
           <label for="equipmentId">Equipment / Resource <span class="required">*</span></label>
           <select id="equipmentId" required>
@@ -61,7 +58,6 @@
           </select>
         </div>
 
-        <!-- Name & PI -->
         <div class="form-row">
           <div class="form-group">
             <label for="reservedBy">Your Name <span class="required">*</span></label>
@@ -75,13 +71,11 @@
           </div>
         </div>
 
-        <!-- Fund number -->
         <div class="form-group">
           <label for="fundNumber">Fund / Account Number <span class="required">*</span></label>
           <input type="text" id="fundNumber" placeholder="e.g. NSF-OCE-2401 or campus index" required />
         </div>
 
-        <!-- Dates & Times -->
         <div class="form-row">
           <div class="form-group">
             <label for="startDate">Start Date <span class="required">*</span></label>
@@ -103,38 +97,29 @@
           </div>
         </div>
 
-        <!-- Notes -->
         <div class="form-group">
           <label for="notes">Notes (optional)</label>
           <textarea id="notes" rows="3" placeholder="Purpose of reservation, special needs, number of people, etc."></textarea>
         </div>
 
-        <!-- Submit -->
         <button type="submit" class="btn btn-primary">Submit Reservation</button>
         <a href="index.html" class="btn btn-outline" style="margin-left:8px;">Cancel</a>
       </form>
     </div>
 
-    <!-- ======== Quick Preview: Existing reservations for selected equipment ======== -->
+    <!-- Preview -->
     <div class="card hidden" id="previewCard" style="display:none;">
       <h3 id="previewTitle">Upcoming Reservations</h3>
       <table class="data-table">
-        <thead>
-          <tr>
-            <th>Dates</th>
-            <th>Times</th>
-            <th>Reserved By</th>
-            <th>PI</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Dates</th><th>Times</th><th>Reserved By</th><th>PI</th></tr></thead>
         <tbody id="previewBody"></tbody>
       </table>
       <p id="previewEmpty" class="text-center mt-8" style="color:#999;display:none;">No upcoming reservations for this item.</p>
     </div>
 
-  </div><!-- /container -->
+  </div>
 
-  <!-- ======== Success Modal ======== -->
+  <!-- Success Modal -->
   <div class="modal-overlay" id="successModal">
     <div class="modal text-center">
       <h3 style="color:var(--kelp);">Reservation Confirmed!</h3>
@@ -148,37 +133,39 @@
 
   <script src="app.js"></script>
   <script>
-    function init() {
-      renderAuthUI();
+    let allReservations = [];
 
-      if (isLoggedIn()) {
-        showReservationForm();
+    async function init() {
+      await renderAuthUI();
+
+      if (await isLoggedIn()) {
+        await showReservationForm();
       } else {
-        document.getElementById("loginGateBtn").addEventListener("click", () => {
-          showLoginModal({
-            requiredRole: "user",
-            message: "Log in with your lab email to make a reservation.",
-            onSuccess: () => showReservationForm(),
-          });
-        });
+        document.getElementById("loginGate").classList.remove("hidden");
       }
     }
 
-    function showReservationForm() {
+    async function showReservationForm() {
       document.getElementById("loginGate").classList.add("hidden");
       document.getElementById("reservationCard").classList.remove("hidden");
+
+      allReservations = await getReservations();
       populateEquipmentDropdown();
       populatePIDropdown();
       setDefaultDates();
       bindForm();
       bindPreview();
+
+      // Pre-fill name from session
+      const user = await getCurrentUser();
+      if (user) {
+        document.getElementById("reservedBy").value = user.name;
+      }
     }
 
-    // ---- Populate Dropdowns ----
     function populateEquipmentDropdown() {
       const sel = document.getElementById("equipmentId");
-      const categories = ["boat", "room", "tool", "vehicle"];
-      categories.forEach(cat => {
+      ["boat", "room", "tool", "vehicle"].forEach(cat => {
         const group = document.createElement("optgroup");
         group.label = getCategoryLabel(cat) + "s";
         getEquipmentByCategory(cat).forEach(eq => {
@@ -202,44 +189,24 @@
     }
 
     function setDefaultDates() {
-      const today = new Date();
-      const todayStr = today.toISOString().slice(0, 10);
+      const todayStr = new Date().toISOString().slice(0, 10);
       document.getElementById("startDate").value = todayStr;
       document.getElementById("endDate").value = todayStr;
       document.getElementById("startDate").min = todayStr;
       document.getElementById("endDate").min = todayStr;
-
-      // Pre-fill the name with the logged-in user's email
-      const user = getCurrentUser();
-      if (user) {
-        const nameField = document.getElementById("reservedBy");
-        if (!nameField.value) {
-          nameField.placeholder = `Logged in as ${user.email}`;
-        }
-      }
     }
 
-    // ---- Sync end date when start date changes ----
     function bindForm() {
       const startDate = document.getElementById("startDate");
       const endDate = document.getElementById("endDate");
-
       startDate.addEventListener("change", () => {
-        if (endDate.value < startDate.value) {
-          endDate.value = startDate.value;
-        }
+        if (endDate.value < startDate.value) endDate.value = startDate.value;
         endDate.min = startDate.value;
         updatePreview();
       });
-
-      // Form submission
-      document.getElementById("reservationForm").addEventListener("submit", (e) => {
-        e.preventDefault();
-        submitReservation();
-      });
+      document.getElementById("reservationForm").addEventListener("submit", (e) => { e.preventDefault(); submitReservation(); });
     }
 
-    // ---- Preview existing reservations for selected equipment ----
     function bindPreview() {
       document.getElementById("equipmentId").addEventListener("change", updatePreview);
     }
@@ -251,40 +218,35 @@
       const empty = document.getElementById("previewEmpty");
       const title = document.getElementById("previewTitle");
 
-      if (!eqId) {
-        card.style.display = "none";
-        return;
-      }
+      if (!eqId) { card.style.display = "none"; return; }
 
       const eq = getEquipmentById(eqId);
       title.textContent = `Upcoming Reservations for ${eq.name}`;
 
-      const today = new Date().toISOString().slice(0, 10);
-      const reservations = getReservations()
-        .filter(r => r.equipmentId === eqId && r.endDate >= today)
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const upcoming = allReservations
+        .filter(r => r.equipmentId === eqId && r.endDate >= todayStr)
         .sort((a, b) => a.startDate.localeCompare(b.startDate));
 
       card.style.display = "block";
+      card.classList.remove("hidden");
 
-      if (reservations.length === 0) {
+      if (upcoming.length === 0) {
         body.innerHTML = "";
         empty.style.display = "block";
         return;
       }
-
       empty.style.display = "none";
-      body.innerHTML = reservations.map(r => `
+      body.innerHTML = upcoming.map(r => `
         <tr>
           <td>${r.startDate} to ${r.endDate}</td>
           <td>${r.startTime} – ${r.endTime}</td>
           <td>${r.reservedBy}</td>
           <td>${r.pi}</td>
-        </tr>
-      `).join("");
+        </tr>`).join("");
     }
 
-    // ---- Submit ----
-    function submitReservation() {
+    async function submitReservation() {
       const fields = {
         equipmentId: document.getElementById("equipmentId").value,
         reservedBy: document.getElementById("reservedBy").value.trim(),
@@ -297,10 +259,8 @@
         notes: document.getElementById("notes").value.trim(),
       };
 
-      // Validation
       const alertBox = document.getElementById("alertBox");
       const errors = [];
-
       if (!fields.equipmentId) errors.push("Please select equipment.");
       if (!fields.reservedBy) errors.push("Please enter your name.");
       if (!fields.pi) errors.push("Please select a PI.");
@@ -309,13 +269,8 @@
       if (!fields.endDate) errors.push("Please select an end date.");
       if (!fields.startTime) errors.push("Please select a start time.");
       if (!fields.endTime) errors.push("Please select an end time.");
-
-      if (fields.startDate && fields.endDate && fields.startDate > fields.endDate) {
-        errors.push("End date cannot be before start date.");
-      }
-      if (fields.startDate === fields.endDate && fields.startTime && fields.endTime && fields.startTime >= fields.endTime) {
-        errors.push("End time must be after start time on the same day.");
-      }
+      if (fields.startDate && fields.endDate && fields.startDate > fields.endDate) errors.push("End date cannot be before start date.");
+      if (fields.startDate === fields.endDate && fields.startTime && fields.endTime && fields.startTime >= fields.endTime) errors.push("End time must be after start time on the same day.");
 
       if (errors.length) {
         alertBox.className = "alert alert-error";
@@ -327,14 +282,19 @@
 
       alertBox.classList.add("hidden");
 
-      // Save
-      const res = addReservation(fields);
-      const eq = getEquipmentById(fields.equipmentId);
+      const result = await addReservation(fields);
 
-      // Show success
-      document.getElementById("successDetails").textContent =
-        `${eq.name} reserved by ${fields.reservedBy} from ${fields.startDate} to ${fields.endDate}.`;
-      document.getElementById("successModal").classList.add("show");
+      if (result.ok) {
+        const eq = getEquipmentById(fields.equipmentId);
+        document.getElementById("successDetails").textContent =
+          `${eq.name} reserved by ${fields.reservedBy} from ${fields.startDate} to ${fields.endDate}.`;
+        document.getElementById("successModal").classList.add("show");
+      } else {
+        alertBox.className = "alert alert-error";
+        alertBox.textContent = result.data.error || "Failed to create reservation.";
+        alertBox.classList.remove("hidden");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     }
 
     function closeModalAndReset() {
